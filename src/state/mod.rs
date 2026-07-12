@@ -23,7 +23,11 @@ pub struct State {
 
 impl State {
     pub fn new(event_loop: &mut smithay::reexports::calloop::EventLoop<'static, Self>, display: smithay::reexports::wayland_server::Display<Self>) -> Self {
-        let mut backend = backend::Backend::Udev(backend::udev::UdevData::new(event_loop).unwrap());
+        let mut backend = if std::env::var_os("WAYLAND_DISPLAY").is_some() || std::env::var_os("DISPLAY").is_some() {
+            backend::Backend::Winit(backend::winit::WinitData::new(event_loop).unwrap())
+        } else {
+            backend::Backend::Udev(backend::udev::UdevData::new(event_loop).unwrap())
+        };
         let mut enki = enki::Enki::new(display, event_loop, &backend.seat_name());
         //let mut backend =
         //    backend::Backend::Winit(backend::winit::WinitData::new(event_loop).unwrap());
