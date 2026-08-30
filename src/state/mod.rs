@@ -63,17 +63,11 @@ impl State {
         }
     }
 
-    pub fn surface_under(&self, pos: Point<f64, Logical>) -> Option<(WlSurface, Point<f64, Logical>)> {
-        self.enki.surface_under(pos)
-    }
+    pub fn surface_under(&self, pos: Point<f64, Logical>) -> Option<(WlSurface, Point<f64, Logical>)> { self.enki.surface_under(pos) }
 
-    pub fn base_monitor_size(&self) -> IVec2 {
-        self.enki.base_monitor_size()
-    }
+    pub fn base_monitor_size(&self) -> IVec2 { self.enki.base_monitor_size() }
 
-    pub fn update_viewport(&mut self, modal_change: bool) {
-        self.enki.update_viewport(modal_change);
-    }
+    pub fn update_viewport(&mut self, modal_change: bool) { self.enki.update_viewport(modal_change); }
 
     pub fn process_input_event<I: InputBackend>(&mut self, event: InputEvent<I>) {
         match event {
@@ -81,92 +75,88 @@ impl State {
                 let serial = SERIAL_COUNTER.next_serial();
                 let time = Event::time_msec(&event);
 
-                self.enki
-                    .seat
-                    .get_keyboard()
-                    .unwrap()
-                    .input::<(), _>(self, event.key_code(), event.state(), serial, time, |data, modifiers, handle| {
-                        if event.state() == KeyState::Pressed {
-                            let sym = handle.modified_sym();
+                self.enki.seat.get_keyboard().unwrap().input::<(), _>(self, event.key_code(), event.state(), serial, time, |data, modifiers, handle| {
+                    if event.state() == KeyState::Pressed {
+                        let sym = handle.modified_sym();
 
-                            // For quitting the compositor
-                            if modifiers.ctrl && modifiers.alt && sym == Keysym::q {
-                                data.enki.loop_signal.stop();
-                            }
-
-                            if sym == Keysym::Alt_R {
-                                data.enki.modal_mode = !data.enki.modal_mode;
-                                data.enki.update_viewport(true);
-                                return FilterResult::Intercept(());
-                            }
-                            if data.enki.modal_mode {
-                                let dir_flipped = match sym {
-                                    Keysym::l | Keysym::L => Some(IVec2::X),
-                                    Keysym::h | Keysym::H => Some(IVec2::NEG_X),
-                                    Keysym::j | Keysym::J => Some(IVec2::NEG_Y),
-                                    Keysym::k | Keysym::K => Some(IVec2::Y),
-                                    _ => None,
-                                };
-                                if let Some(dir_flipped) = dir_flipped {
-                                    let dir = dir_flipped * IVec2::FLIP_Y;
-                                    let grow_dir = |span: &mut i32, origin: &mut i32, d: i32| {
-                                        *span += d.abs();
-                                        *origin -= (d < 0) as i32;
-                                    };
-                                    let shrink_dir = |span: &mut i32, origin: &mut i32, d: i32| {
-                                        let old = *span;
-                                        *span = (*span - d.abs()).max(1);
-                                        if *span < old {
-                                            *origin += (d < 0) as i32;
-                                        }
-                                    };
-                                    let camera = &mut data.enki.camera;
-                                    if modifiers.shift {
-                                        grow_dir(&mut camera.span.x, &mut camera.origin.x, dir.x);
-                                        grow_dir(&mut camera.span.y, &mut camera.origin.y, dir.y);
-                                    } else if modifiers.alt {
-                                        shrink_dir(&mut camera.span.x, &mut camera.origin.x, dir.x);
-                                        shrink_dir(&mut camera.span.y, &mut camera.origin.y, dir.y);
-                                    } else {
-                                        camera.origin += dir;
-                                    }
-                                    data.enki.update_viewport(false);
-                                    return FilterResult::Intercept(());
-                                }
-                                let focus_dir_flipped = match sym {
-                                    Keysym::u | Keysym::U => Some(IVec2::NEG_X),
-                                    Keysym::i | Keysym::I => Some(IVec2::NEG_Y),
-                                    Keysym::o | Keysym::O => Some(IVec2::Y),
-                                    Keysym::p | Keysym::P => Some(IVec2::X),
-                                    _ => None,
-                                };
-                                if let Some(focus_dir) = focus_dir_flipped {
-                                    let dir = focus_dir * IVec2::FLIP_Y;
-                                    if modifiers.shift {
-                                        let target_loc = data.enki.cell_cursor + dir;
-                                        data.enki.grid.swap(data.enki.cell_cursor, target_loc);
-                                        data.enki.cell_cursor = target_loc;
-                                        data.enki.update_viewport(false);
-                                    } else {
-                                        data.enki.cell_cursor += dir;
-                                    }
-                                    data.set_cursor_focus();
-                                    return FilterResult::Intercept(());
-                                }
-                                let program = match sym {
-                                    Keysym::Return if modifiers.shift => Some("weston-terminal"),
-                                    Keysym::Return => Some("kitty"),
-                                    Keysym::w => Some("firefox"),
-                                    _ => None,
-                                };
-                                if let Some(program) = program {
-                                    std::process::Command::new(program).spawn().ok();
-                                }
-                                return FilterResult::Intercept(());
-                            }
+                        // For quitting the compositor
+                        if modifiers.ctrl && modifiers.alt && sym == Keysym::q {
+                            data.enki.loop_signal.stop();
                         }
-                        FilterResult::Forward
-                    });
+
+                        if sym == Keysym::Alt_R {
+                            data.enki.modal_mode = !data.enki.modal_mode;
+                            data.enki.update_viewport(true);
+                            return FilterResult::Intercept(());
+                        }
+                        if data.enki.modal_mode {
+                            let dir_flipped = match sym {
+                                Keysym::l | Keysym::L => Some(IVec2::X),
+                                Keysym::h | Keysym::H => Some(IVec2::NEG_X),
+                                Keysym::j | Keysym::J => Some(IVec2::NEG_Y),
+                                Keysym::k | Keysym::K => Some(IVec2::Y),
+                                _ => None,
+                            };
+                            if let Some(dir_flipped) = dir_flipped {
+                                let dir = dir_flipped * IVec2::FLIP_Y;
+                                let grow_dir = |span: &mut i32, origin: &mut i32, d: i32| {
+                                    *span += d.abs();
+                                    *origin -= (d < 0) as i32;
+                                };
+                                let shrink_dir = |span: &mut i32, origin: &mut i32, d: i32| {
+                                    let old = *span;
+                                    *span = (*span - d.abs()).max(1);
+                                    if *span < old {
+                                        *origin += (d < 0) as i32;
+                                    }
+                                };
+                                let camera = &mut data.enki.camera;
+                                if modifiers.shift {
+                                    grow_dir(&mut camera.span.x, &mut camera.origin.x, dir.x);
+                                    grow_dir(&mut camera.span.y, &mut camera.origin.y, dir.y);
+                                } else if modifiers.alt {
+                                    shrink_dir(&mut camera.span.x, &mut camera.origin.x, dir.x);
+                                    shrink_dir(&mut camera.span.y, &mut camera.origin.y, dir.y);
+                                } else {
+                                    camera.origin += dir;
+                                }
+                                data.enki.update_viewport(false);
+                                return FilterResult::Intercept(());
+                            }
+                            let focus_dir_flipped = match sym {
+                                Keysym::u | Keysym::U => Some(IVec2::NEG_X),
+                                Keysym::i | Keysym::I => Some(IVec2::NEG_Y),
+                                Keysym::o | Keysym::O => Some(IVec2::Y),
+                                Keysym::p | Keysym::P => Some(IVec2::X),
+                                _ => None,
+                            };
+                            if let Some(focus_dir) = focus_dir_flipped {
+                                let dir = focus_dir * IVec2::FLIP_Y;
+                                if modifiers.shift {
+                                    let target_loc = data.enki.cell_cursor + dir;
+                                    data.enki.grid.swap(data.enki.cell_cursor, target_loc);
+                                    data.enki.cell_cursor = target_loc;
+                                    data.enki.update_viewport(false);
+                                } else {
+                                    data.enki.cell_cursor += dir;
+                                }
+                                data.set_cursor_focus();
+                                return FilterResult::Intercept(());
+                            }
+                            let program = match sym {
+                                Keysym::Return if modifiers.shift => Some("weston-terminal"),
+                                Keysym::Return => Some("kitty"),
+                                Keysym::w => Some("firefox"),
+                                _ => None,
+                            };
+                            if let Some(program) = program {
+                                std::process::Command::new(program).spawn().ok();
+                            }
+                            return FilterResult::Intercept(());
+                        }
+                    }
+                    FilterResult::Forward
+                });
             }
             InputEvent::PointerMotionAbsolute { event, .. } => {
                 let output = self.enki.space.outputs().next().unwrap();

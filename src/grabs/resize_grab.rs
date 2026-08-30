@@ -6,16 +6,8 @@
 use crate::state::State;
 use smithay::{
     desktop::{Space, Window},
-    input::pointer::{
-        AxisFrame, ButtonEvent, GestureHoldBeginEvent, GestureHoldEndEvent, GesturePinchBeginEvent,
-        GesturePinchEndEvent, GesturePinchUpdateEvent, GestureSwipeBeginEvent,
-        GestureSwipeEndEvent, GestureSwipeUpdateEvent, GrabStartData as PointerGrabStartData,
-        MotionEvent, PointerGrab, PointerInnerHandle, RelativeMotionEvent,
-    },
-    reexports::{
-        wayland_protocols::xdg::shell::server::xdg_toplevel,
-        wayland_server::protocol::wl_surface::WlSurface,
-    },
+    input::pointer::{AxisFrame, ButtonEvent, GestureHoldBeginEvent, GestureHoldEndEvent, GesturePinchBeginEvent, GesturePinchEndEvent, GesturePinchUpdateEvent, GestureSwipeBeginEvent, GestureSwipeEndEvent, GestureSwipeUpdateEvent, GrabStartData as PointerGrabStartData, MotionEvent, PointerGrab, PointerInnerHandle, RelativeMotionEvent},
+    reexports::{wayland_protocols::xdg::shell::server::xdg_toplevel, wayland_server::protocol::wl_surface::WlSurface},
     utils::{Logical, Point, Rectangle, Size},
     wayland::{compositor, shell::xdg::SurfaceCachedState},
 };
@@ -39,9 +31,7 @@ bitflags::bitflags! {
 
 impl From<xdg_toplevel::ResizeEdge> for ResizeEdge {
     #[inline]
-    fn from(x: xdg_toplevel::ResizeEdge) -> Self {
-        Self::from_bits(x as u32).unwrap()
-    }
+    fn from(x: xdg_toplevel::ResizeEdge) -> Self { Self::from_bits(x as u32).unwrap() }
 }
 
 pub struct ResizeSurfaceGrab {
@@ -55,12 +45,7 @@ pub struct ResizeSurfaceGrab {
 }
 
 impl ResizeSurfaceGrab {
-    pub fn start(
-        start_data: PointerGrabStartData<State>,
-        window: Window,
-        edges: ResizeEdge,
-        initial_window_rect: Rectangle<i32, Logical>,
-    ) -> Self {
+    pub fn start(start_data: PointerGrabStartData<State>, window: Window, edges: ResizeEdge, initial_window_rect: Rectangle<i32, Logical>) -> Self {
         let initial_rect = initial_window_rect;
 
         ResizeSurfaceState::with(window.toplevel().unwrap().wl_surface(), |state| {
@@ -81,13 +66,7 @@ impl ResizeSurfaceGrab {
 }
 
 impl PointerGrab<State> for ResizeSurfaceGrab {
-    fn motion(
-        &mut self,
-        data: &mut State,
-        handle: &mut PointerInnerHandle<'_, State>,
-        _focus: Option<(WlSurface, Point<f64, Logical>)>,
-        event: &MotionEvent,
-    ) {
+    fn motion(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, _focus: Option<(WlSurface, Point<f64, Logical>)>, event: &MotionEvent) {
         // While the grab is active, no client has pointer focus
         handle.motion(data, None, event);
 
@@ -112,31 +91,19 @@ impl PointerGrab<State> for ResizeSurfaceGrab {
             new_window_height = (self.initial_rect.size.h as f64 + delta.y) as i32;
         }
 
-        let (min_size, max_size) =
-            compositor::with_states(self.window.toplevel().unwrap().wl_surface(), |states| {
-                let mut guard = states.cached_state.get::<SurfaceCachedState>();
-                let data = guard.current();
-                (data.min_size, data.max_size)
-            });
+        let (min_size, max_size) = compositor::with_states(self.window.toplevel().unwrap().wl_surface(), |states| {
+            let mut guard = states.cached_state.get::<SurfaceCachedState>();
+            let data = guard.current();
+            (data.min_size, data.max_size)
+        });
 
         let min_width = min_size.w.max(1);
         let min_height = min_size.h.max(1);
 
-        let max_width = if max_size.w == 0 {
-            i32::MAX
-        } else {
-            max_size.w
-        };
-        let max_height = if max_size.h == 0 {
-            i32::MAX
-        } else {
-            max_size.h
-        };
+        let max_width = if max_size.w == 0 { i32::MAX } else { max_size.w };
+        let max_height = if max_size.h == 0 { i32::MAX } else { max_size.h };
 
-        self.last_window_size = Size::from((
-            new_window_width.max(min_width).min(max_width),
-            new_window_height.max(min_height).min(max_height),
-        ));
+        self.last_window_size = Size::from((new_window_width.max(min_width).min(max_width), new_window_height.max(min_height).min(max_height)));
 
         let xdg = self.window.toplevel().unwrap();
         xdg.with_pending_state(|state| {
@@ -147,22 +114,9 @@ impl PointerGrab<State> for ResizeSurfaceGrab {
         xdg.send_pending_configure();
     }
 
-    fn relative_motion(
-        &mut self,
-        data: &mut State,
-        handle: &mut PointerInnerHandle<'_, State>,
-        focus: Option<(WlSurface, Point<f64, Logical>)>,
-        event: &RelativeMotionEvent,
-    ) {
-        handle.relative_motion(data, focus, event);
-    }
+    fn relative_motion(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, focus: Option<(WlSurface, Point<f64, Logical>)>, event: &RelativeMotionEvent) { handle.relative_motion(data, focus, event); }
 
-    fn button(
-        &mut self,
-        data: &mut State,
-        handle: &mut PointerInnerHandle<'_, State>,
-        event: &ButtonEvent,
-    ) {
+    fn button(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, event: &ButtonEvent) {
         handle.button(data, event);
 
         // The button is a button code as defined in the
@@ -190,94 +144,27 @@ impl PointerGrab<State> for ResizeSurfaceGrab {
         }
     }
 
-    fn axis(
-        &mut self,
-        data: &mut State,
-        handle: &mut PointerInnerHandle<'_, State>,
-        details: AxisFrame,
-    ) {
-        handle.axis(data, details)
-    }
+    fn axis(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, details: AxisFrame) { handle.axis(data, details) }
 
-    fn frame(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>) {
-        handle.frame(data);
-    }
+    fn frame(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>) { handle.frame(data); }
 
-    fn gesture_swipe_begin(
-        &mut self,
-        data: &mut State,
-        handle: &mut PointerInnerHandle<'_, State>,
-        event: &GestureSwipeBeginEvent,
-    ) {
-        handle.gesture_swipe_begin(data, event)
-    }
+    fn gesture_swipe_begin(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, event: &GestureSwipeBeginEvent) { handle.gesture_swipe_begin(data, event) }
 
-    fn gesture_swipe_update(
-        &mut self,
-        data: &mut State,
-        handle: &mut PointerInnerHandle<'_, State>,
-        event: &GestureSwipeUpdateEvent,
-    ) {
-        handle.gesture_swipe_update(data, event)
-    }
+    fn gesture_swipe_update(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, event: &GestureSwipeUpdateEvent) { handle.gesture_swipe_update(data, event) }
 
-    fn gesture_swipe_end(
-        &mut self,
-        data: &mut State,
-        handle: &mut PointerInnerHandle<'_, State>,
-        event: &GestureSwipeEndEvent,
-    ) {
-        handle.gesture_swipe_end(data, event)
-    }
+    fn gesture_swipe_end(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, event: &GestureSwipeEndEvent) { handle.gesture_swipe_end(data, event) }
 
-    fn gesture_pinch_begin(
-        &mut self,
-        data: &mut State,
-        handle: &mut PointerInnerHandle<'_, State>,
-        event: &GesturePinchBeginEvent,
-    ) {
-        handle.gesture_pinch_begin(data, event)
-    }
+    fn gesture_pinch_begin(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, event: &GesturePinchBeginEvent) { handle.gesture_pinch_begin(data, event) }
 
-    fn gesture_pinch_update(
-        &mut self,
-        data: &mut State,
-        handle: &mut PointerInnerHandle<'_, State>,
-        event: &GesturePinchUpdateEvent,
-    ) {
-        handle.gesture_pinch_update(data, event)
-    }
+    fn gesture_pinch_update(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, event: &GesturePinchUpdateEvent) { handle.gesture_pinch_update(data, event) }
 
-    fn gesture_pinch_end(
-        &mut self,
-        data: &mut State,
-        handle: &mut PointerInnerHandle<'_, State>,
-        event: &GesturePinchEndEvent,
-    ) {
-        handle.gesture_pinch_end(data, event)
-    }
+    fn gesture_pinch_end(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, event: &GesturePinchEndEvent) { handle.gesture_pinch_end(data, event) }
 
-    fn gesture_hold_begin(
-        &mut self,
-        data: &mut State,
-        handle: &mut PointerInnerHandle<'_, State>,
-        event: &GestureHoldBeginEvent,
-    ) {
-        handle.gesture_hold_begin(data, event)
-    }
+    fn gesture_hold_begin(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, event: &GestureHoldBeginEvent) { handle.gesture_hold_begin(data, event) }
 
-    fn gesture_hold_end(
-        &mut self,
-        data: &mut State,
-        handle: &mut PointerInnerHandle<'_, State>,
-        event: &GestureHoldEndEvent,
-    ) {
-        handle.gesture_hold_end(data, event)
-    }
+    fn gesture_hold_end(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, event: &GestureHoldEndEvent) { handle.gesture_hold_end(data, event) }
 
-    fn start_data(&self) -> &PointerGrabStartData<State> {
-        &self.start_data
-    }
+    fn start_data(&self) -> &PointerGrabStartData<State> { &self.start_data }
 
     fn unset(&mut self, _data: &mut State) {}
 }
@@ -338,10 +225,7 @@ impl ResizeSurfaceState {
 
 /// Should be called on `WlSurface::commit`
 pub fn handle_commit(space: &mut Space<Window>, surface: &WlSurface) -> Option<()> {
-    let window = space
-        .elements()
-        .find(|w| w.toplevel().unwrap().wl_surface() == surface)
-        .cloned()?;
+    let window = space.elements().find(|w| w.toplevel().unwrap().wl_surface() == surface).cloned()?;
 
     let mut window_loc = space.element_location(&window)?;
     let geometry = window.geometry();
@@ -353,13 +237,9 @@ pub fn handle_commit(space: &mut Space<Window>, surface: &WlSurface) -> Option<(
                 // If the window is being resized by top or left, its location must be adjusted
                 // accordingly.
                 edges.intersects(ResizeEdge::TOP_LEFT).then(|| {
-                    let new_x = edges
-                        .intersects(ResizeEdge::LEFT)
-                        .then_some(initial_rect.loc.x + (initial_rect.size.w - geometry.size.w));
+                    let new_x = edges.intersects(ResizeEdge::LEFT).then_some(initial_rect.loc.x + (initial_rect.size.w - geometry.size.w));
 
-                    let new_y = edges
-                        .intersects(ResizeEdge::TOP)
-                        .then_some(initial_rect.loc.y + (initial_rect.size.h - geometry.size.h));
+                    let new_y = edges.intersects(ResizeEdge::TOP).then_some(initial_rect.loc.y + (initial_rect.size.h - geometry.size.h));
 
                     (new_x, new_y).into()
                 })

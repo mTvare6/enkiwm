@@ -1,4 +1,4 @@
-max_width = 200
+max_width = 350
 
 # keep functions straight
 fn_call_width = 300

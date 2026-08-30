@@ -112,13 +112,9 @@ impl Default for PointerElement {
 }
 
 impl PointerElement {
-    pub fn set_status(&mut self, status: CursorImageStatus) {
-        self.status = status;
-    }
+    pub fn set_status(&mut self, status: CursorImageStatus) { self.status = status; }
 
-    pub fn set_buffer(&mut self, buffer: MemoryRenderBuffer) {
-        self.buffer = Some(buffer);
-    }
+    pub fn set_buffer(&mut self, buffer: MemoryRenderBuffer) { self.buffer = Some(buffer); }
 }
 
 impl<T: Texture + Clone + Send + 'static, R> AsRenderElements<R> for PointerElement
@@ -132,20 +128,13 @@ where
             CursorImageStatus::Hidden => vec![],
             CursorImageStatus::Named(_) => {
                 if let Some(buffer) = self.buffer.as_ref() {
-                    vec![
-                        PointerRenderElement::<R>::from(
-                            MemoryRenderBufferRenderElement::from_buffer(renderer, location.to_f64(), buffer, None, None, None, smithay::backend::renderer::element::Kind::Cursor)
-                                .expect("Lost system pointer buffer"),
-                        )
-                        .into(),
-                    ]
+                    vec![PointerRenderElement::<R>::from(MemoryRenderBufferRenderElement::from_buffer(renderer, location.to_f64(), buffer, None, None, None, smithay::backend::renderer::element::Kind::Cursor).expect("Lost system pointer buffer")).into()]
                 } else {
                     vec![]
                 }
             }
             CursorImageStatus::Surface(surface) => {
-                let elements: Vec<PointerRenderElement<R>> =
-                    smithay::backend::renderer::element::surface::render_elements_from_surface_tree(renderer, surface, location, scale, alpha, smithay::backend::renderer::element::Kind::Cursor);
+                let elements: Vec<PointerRenderElement<R>> = smithay::backend::renderer::element::surface::render_elements_from_surface_tree(renderer, surface, location, scale, alpha, smithay::backend::renderer::element::Kind::Cursor);
                 elements.into_iter().map(C::from).collect()
             }
         }

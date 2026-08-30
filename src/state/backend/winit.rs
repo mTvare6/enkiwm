@@ -67,11 +67,7 @@ impl WinitData {
                 WinitEvent::Redraw => {
                     state.backend.render_frame(&state.enki.space);
 
-                    state
-                        .enki
-                        .space
-                        .elements()
-                        .for_each(|window| window.send_frame(&output_for_closure, state.enki.start_time.elapsed(), Some(Duration::ZERO), |_, _| Some(output_for_closure.clone())));
+                    state.enki.space.elements().for_each(|window| window.send_frame(&output_for_closure, state.enki.start_time.elapsed(), Some(Duration::ZERO), |_, _| Some(output_for_closure.clone())));
 
                     state.enki.space.refresh();
                     state.enki.popups.cleanup();
@@ -106,18 +102,7 @@ impl WinitData {
 
         {
             let (renderer, mut framebuffer) = self.backend.bind().unwrap();
-            smithay::desktop::space::render_output::<_, WaylandSurfaceRenderElement<GlesRenderer>, _, _>(
-                &self.output,
-                renderer,
-                &mut framebuffer,
-                1.0,
-                0,
-                [space],
-                &[],
-                &mut self.damage,
-                [0.1, 0.1, 0.1, 1.0],
-            )
-            .unwrap();
+            smithay::desktop::space::render_output::<_, WaylandSurfaceRenderElement<GlesRenderer>, _, _>(&self.output, renderer, &mut framebuffer, 1.0, 0, [space], &[], &mut self.damage, [0.1, 0.1, 0.1, 1.0]).unwrap();
         }
 
         self.backend.submit(Some(&[damage])).unwrap();

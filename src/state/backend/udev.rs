@@ -265,31 +265,15 @@ impl UdevData {
         let allocator = render_node
             .is_some()
             .then(|| GbmAllocator::new(gbm.clone(), GbmBufferFlags::RENDERING | GbmBufferFlags::SCANOUT))
-            .or_else(|| {
-                self.devices
-                    .get(&self.primary_gpu)
-                    .or_else(|| self.devices.values().find(|backend| backend.render_node == Some(self.primary_gpu)))
-                    .map(|backend| backend.output_manager.allocator().clone())
-            });
+            .or_else(|| self.devices.get(&self.primary_gpu).or_else(|| self.devices.values().find(|backend| backend.render_node == Some(self.primary_gpu))).map(|backend| backend.output_manager.allocator().clone()));
 
         let framebuffer_exporter = GbmFramebufferExporter::new(gbm.clone(), render_node.into());
 
-        let color_formats = if std::env::var("ANVIL_DISABLE_10BIT").is_ok() {
-            SUPPORTED_FORMATS_8BIT_ONLY
-        } else {
-            SUPPORTED_FORMATS
-        };
+        let color_formats = if std::env::var("ANVIL_DISABLE_10BIT").is_ok() { SUPPORTED_FORMATS_8BIT_ONLY } else { SUPPORTED_FORMATS };
 
         let mut renderer = self.gpu_manager.single_renderer(&render_node.unwrap_or(self.primary_gpu)).unwrap();
 
-        let render_formats = renderer
-            .as_mut()
-            .egl_context()
-            .dmabuf_render_formats()
-            .iter()
-            .filter(|format| render_node.is_some() || format.modifier == Modifier::Linear)
-            .copied()
-            .collect::<FormatSet>();
+        let render_formats = renderer.as_mut().egl_context().dmabuf_render_formats().iter().filter(|format| render_node.is_some() || format.modifier == Modifier::Linear).copied().collect::<FormatSet>();
 
         let drm_output_manager = DrmOutputManager::new(drm, allocator.unwrap(), framebuffer_exporter, Some(gbm), color_formats.iter().copied(), render_formats);
 
@@ -398,15 +382,7 @@ impl UdevData {
             }
         };
 
-        let drm_output = match device.output_manager.lock().initialize_output::<_, WaylandSurfaceRenderElement<UdevRenderer<'_>>>(
-            crtc,
-            drm_mode,
-            &[connector.handle()],
-            &output,
-            None,
-            &mut renderer,
-            &DrmOutputRenderElements::default(),
-        ) {
+        let drm_output = match device.output_manager.lock().initialize_output::<_, WaylandSurfaceRenderElement<UdevRenderer<'_>>>(crtc, drm_mode, &[connector.handle()], &output, None, &mut renderer, &DrmOutputRenderElements::default()) {
             Ok(drm_output) => drm_output,
             Err(err) => {
                 warn!("Failed to initialize DRM output: {err}");
@@ -511,10 +487,7 @@ impl UdevData {
             }
             self.pointer_element.set_status(cursor_status);
 
-            pointer_elements.extend(
-                self.pointer_element
-                    .render_elements::<PointerRenderElement<_>>(&mut renderer, (cursor_pos - hotspot.to_f64()).to_physical(scale).to_i32_round(), scale, 1.0),
-            );
+            pointer_elements.extend(self.pointer_element.render_elements::<PointerRenderElement<_>>(&mut renderer, (cursor_pos - hotspot.to_f64()).to_physical(scale).to_i32_round(), scale, 1.0));
         }
 
         let space_elements = match smithay::desktop::space::space_render_elements::<_, Window, _>(&mut renderer, [&enki.space], &surface.output, 1.0) {
@@ -525,11 +498,7 @@ impl UdevData {
             }
         };
 
-        let elements: Vec<_> = space_elements
-            .into_iter()
-            .map(|s| OutputRenderElements::Window(s))
-            .chain(pointer_elements.into_iter().map(|p| OutputRenderElements::Pointer(p)))
-            .collect();
+        let elements: Vec<_> = space_elements.into_iter().map(|s| OutputRenderElements::Window(s)).chain(pointer_elements.into_iter().map(|p| OutputRenderElements::Pointer(p))).collect();
 
         match surface.drm_output.render_frame(&mut renderer, &elements, [0.1, 0.1, 0.1, 1.0], FrameFlags::DEFAULT) {
             Ok(result) => {

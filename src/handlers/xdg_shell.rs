@@ -25,9 +25,7 @@ use crate::{
 };
 
 impl XdgShellHandler for State {
-    fn xdg_shell_state(&mut self) -> &mut XdgShellState {
-        &mut self.enki.xdg_shell_state
-    }
+    fn xdg_shell_state(&mut self) -> &mut XdgShellState { &mut self.enki.xdg_shell_state }
 
     fn new_toplevel(&mut self, surface: ToplevelSurface) {
         let window = Window::new_wayland_window(surface.clone());
