@@ -2,7 +2,7 @@ use std::{ffi::OsString, sync::Arc};
 
 use smithay::{
     desktop::{find_popup_root_surface, get_popup_toplevel_coords, PopupKind, PopupManager, Space, Window, WindowSurfaceType},
-    input::{Seat, SeatState},
+    input::{pointer::CursorImageStatus, Seat, SeatState},
     reexports::{
         calloop::{generic::Generic, EventLoop, Interest, LoopHandle, LoopSignal, Mode, PostAction},
         wayland_server::{protocol::wl_surface::WlSurface, Display, DisplayHandle},
@@ -18,7 +18,7 @@ use smithay::{
     },
 };
 
-use crate::{layout::Grid, math::IVec2, state::State};
+use crate::{cursor::Cursor, layout::Grid, math::IVec2, state::State};
 
 pub struct Camera {
     pub origin: IVec2,
@@ -50,6 +50,9 @@ pub struct Enki {
     pub data_device_state: DataDeviceState,
     pub popups: PopupManager,
     pub seat: Seat<State>,
+
+    // cursor
+    pub cursor_image_status: CursorImageStatus,
 
     // window layout
     pub space: Space<Window>,
@@ -93,6 +96,7 @@ impl Enki {
             seat_state,
             data_device_state,
             popups,
+            cursor_image_status: CursorImageStatus::default_named(),
             seat,
             space: Space::default(),
             grid: Grid::new(),

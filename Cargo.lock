@@ -439,6 +439,7 @@ dependencies = [
  "smithay-drm-extras",
  "tracing",
  "tracing-subscriber",
+ "xcursor",
 ]
 
 [[package]]

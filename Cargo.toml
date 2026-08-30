@@ -7,5 +7,6 @@ edition = "2021"
 tracing = "0.1.40"
 tracing-subscriber = { version = "0.3.16", features = ["env-filter"] }
 bitflags = "2.2.1"
+xcursor = "0.3.10"
 smithay = { git = "https://github.com/Smithay/smithay", branch = "master", features = ["backend_winit", "wayland_frontend", "desktop"] }
 smithay-drm-extras = { git = "https://github.com/Smithay/smithay" }

@@ -1,8 +1,6 @@
 use smithay::{
     delegate_xdg_shell,
-    desktop::{
-        PopupKind, PopupManager, Space, Window,
-    },
+    desktop::{PopupKind, PopupManager, Space, Window},
     input::{
         pointer::{Focus, GrabStartData as PointerGrabStartData},
         Seat,
@@ -17,10 +15,7 @@ use smithay::{
     utils::{Rectangle, Serial},
     wayland::{
         compositor::with_states,
-        shell::xdg::{
-            PopupSurface, PositionerState, ToplevelSurface, XdgShellHandler, XdgShellState,
-            XdgToplevelSurfaceData,
-        },
+        shell::xdg::{PopupSurface, PositionerState, ToplevelSurface, XdgShellHandler, XdgShellState, XdgToplevelSurfaceData},
     },
 };
 
@@ -46,9 +41,7 @@ impl XdgShellHandler for State {
 
         let pixel_position = target_index * cell_size;
 
-        self.enki
-            .space
-            .map_element(window.clone(), pixel_position, false);
+        self.enki.space.map_element(window.clone(), pixel_position, false);
         self.enki.grid.insert(target_index, window);
 
         surface.with_pending_state(|state| {
@@ -67,12 +60,7 @@ impl XdgShellHandler for State {
         let _ = self.enki.popups.track_popup(PopupKind::Xdg(surface));
     }
 
-    fn reposition_request(
-        &mut self,
-        surface: PopupSurface,
-        positioner: PositionerState,
-        token: u32,
-    ) {
+    fn reposition_request(&mut self, surface: PopupSurface, positioner: PositionerState, token: u32) {
         surface.with_pending_state(|state| {
             let geometry = positioner.get_geometry();
             state.geometry = geometry;
@@ -90,13 +78,7 @@ impl XdgShellHandler for State {
         if let Some(start_data) = check_grab(&seat, wl_surface, serial) {
             let pointer = seat.get_pointer().unwrap();
 
-            let window = self
-                .enki
-                .space
-                .elements()
-                .find(|w| w.toplevel().unwrap().wl_surface() == wl_surface)
-                .unwrap()
-                .clone();
+            let window = self.enki.space.elements().find(|w| w.toplevel().unwrap().wl_surface() == wl_surface).unwrap().clone();
             let initial_window_location = self.enki.space.element_location(&window).unwrap();
 
             let grab = MoveSurfaceGrab {
@@ -109,13 +91,7 @@ impl XdgShellHandler for State {
         }
     }
 
-    fn resize_request(
-        &mut self,
-        surface: ToplevelSurface,
-        seat: wl_seat::WlSeat,
-        serial: Serial,
-        edges: xdg_toplevel::ResizeEdge,
-    ) {
+    fn resize_request(&mut self, surface: ToplevelSurface, seat: wl_seat::WlSeat, serial: Serial, edges: xdg_toplevel::ResizeEdge) {
         let seat = Seat::from_resource(&seat).unwrap();
 
         let wl_surface = surface.wl_surface();
@@ -123,13 +99,7 @@ impl XdgShellHandler for State {
         if let Some(start_data) = check_grab(&seat, wl_surface, serial) {
             let pointer = seat.get_pointer().unwrap();
 
-            let window = self
-                .enki
-                .space
-                .elements()
-                .find(|w| w.toplevel().unwrap().wl_surface() == wl_surface)
-                .unwrap()
-                .clone();
+            let window = self.enki.space.elements().find(|w| w.toplevel().unwrap().wl_surface() == wl_surface).unwrap().clone();
             let initial_window_location = self.enki.space.element_location(&window).unwrap();
             let initial_window_size = window.geometry().size;
 
@@ -139,28 +109,18 @@ impl XdgShellHandler for State {
 
             surface.send_pending_configure();
 
-            let grab = ResizeSurfaceGrab::start(
-                start_data,
-                window,
-                edges.into(),
-                Rectangle::new(initial_window_location, initial_window_size),
-            );
+            let grab = ResizeSurfaceGrab::start(start_data, window, edges.into(), Rectangle::new(initial_window_location, initial_window_size));
 
             pointer.set_grab(self, grab, serial, Focus::Clear);
         }
     }
 
-    fn grab(&mut self, _surface: PopupSurface, _seat: wl_seat::WlSeat, _serial: Serial) {
-    }
+    fn grab(&mut self, _surface: PopupSurface, _seat: wl_seat::WlSeat, _serial: Serial) {}
 }
 
 delegate_xdg_shell!(State);
 
-fn check_grab(
-    seat: &Seat<State>,
-    surface: &WlSurface,
-    serial: Serial,
-) -> Option<PointerGrabStartData<State>> {
+fn check_grab(seat: &Seat<State>, surface: &WlSurface, serial: Serial) -> Option<PointerGrabStartData<State>> {
     let pointer = seat.get_pointer()?;
 
     if !pointer.has_grab(serial) {
@@ -178,20 +138,8 @@ fn check_grab(
 }
 
 pub fn handle_commit(popups: &mut PopupManager, space: &Space<Window>, surface: &WlSurface) {
-    if let Some(window) = space
-        .elements()
-        .find(|w| w.toplevel().unwrap().wl_surface() == surface)
-        .cloned()
-    {
-        let initial_configure_sent = with_states(surface, |states| {
-            states
-                .data_map
-                .get::<XdgToplevelSurfaceData>()
-                .unwrap()
-                .lock()
-                .unwrap()
-                .initial_configure_sent
-        });
+    if let Some(window) = space.elements().find(|w| w.toplevel().unwrap().wl_surface() == surface).cloned() {
+        let initial_configure_sent = with_states(surface, |states| states.data_map.get::<XdgToplevelSurfaceData>().unwrap().lock().unwrap().initial_configure_sent);
 
         if !initial_configure_sent {
             window.toplevel().unwrap().send_configure();

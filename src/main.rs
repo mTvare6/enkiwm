@@ -2,10 +2,10 @@
 
 #![allow(irrefutable_let_patterns)]
 
-mod handlers;
-
 mod command;
+mod cursor;
 mod grabs;
+mod handlers;
 mod layout;
 mod math;
 mod state;
@@ -36,7 +36,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         state.enki.space.refresh();
         state.enki.popups.cleanup();
         state.enki.grid.cleanup();
-        state.backend.event_loop_tick(&state.enki.space);
+        state.backend.event_loop_tick(&state.enki);
     })?;
 
     Ok(())
@@ -61,7 +61,7 @@ fn spawn_client() {
             std::process::Command::new(command).spawn().ok();
         }
         _ => {
-            std::process::Command::new("alacritty").spawn().ok();
+            std::process::Command::new("kitty").spawn().ok();
         }
     }
 }

@@ -2,7 +2,7 @@ pub mod backend;
 pub mod enki;
 
 use smithay::{
-    backend::input::{AbsolutePositionEvent, Axis, AxisSource, ButtonState, Event, InputBackend, InputEvent, KeyState, KeyboardKeyEvent, PointerAxisEvent, PointerButtonEvent},
+    backend::input::{AbsolutePositionEvent, Axis, AxisSource, ButtonState, Event, InputBackend, InputEvent, KeyState, KeyboardKeyEvent, PointerAxisEvent, PointerButtonEvent, PointerMotionEvent},
     input::{
         keyboard::{FilterResult, Keysym},
         pointer::{AxisFrame, ButtonEvent, MotionEvent},
@@ -29,8 +29,6 @@ impl State {
             backend::Backend::Udev(backend::udev::UdevData::new(event_loop).unwrap())
         };
         let mut enki = enki::Enki::new(display, event_loop, &backend.seat_name());
-        //let mut backend =
-        //    backend::Backend::Winit(backend::winit::WinitData::new(event_loop).unwrap());
 
         backend.init(event_loop, &mut enki).unwrap();
 
@@ -88,6 +86,12 @@ impl State {
                     .input::<(), _>(self, event.key_code(), event.state(), serial, time, |data, modifiers, handle| {
                         if event.state() == KeyState::Pressed {
                             let sym = handle.modified_sym();
+
+                            // For quitting the compositor
+                            if modifiers.ctrl && modifiers.alt && sym == Keysym::q {
+                                data.enki.loop_signal.stop();
+                            }
+
                             if sym == Keysym::Alt_R {
                                 data.enki.modal_mode = !data.enki.modal_mode;
                                 data.enki.update_viewport(true);
@@ -246,6 +250,39 @@ impl State {
 
                 let pointer = self.enki.seat.get_pointer().unwrap();
                 pointer.axis(self, frame);
+                pointer.frame(self);
+            }
+            InputEvent::PointerMotion { event, .. } => {
+                let serial = SERIAL_COUNTER.next_serial();
+                let pointer = self.enki.seat.get_pointer().unwrap();
+
+                let pos = pointer.current_location() + event.delta();
+                let new_location = self
+                    .enki
+                    .space
+                    .outputs()
+                    .next()
+                    .map(|output| {
+                        self.enki.space.output_geometry(output).map(|geo| {
+                            let geo = geo.to_f64();
+
+                            Point::from((pos.x.clamp(geo.loc.x, geo.loc.x + geo.size.w - 1.0), pos.y.clamp(geo.loc.y, geo.loc.y + geo.size.h - 1.0)))
+                        })
+                    })
+                    .flatten()
+                    .unwrap_or(pos);
+
+                let under = self.surface_under(new_location);
+
+                pointer.motion(
+                    self,
+                    under,
+                    &MotionEvent {
+                        location: new_location,
+                        serial,
+                        time: event.time_msec(),
+                    },
+                );
                 pointer.frame(self);
             }
             _ => {}

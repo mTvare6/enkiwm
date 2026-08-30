@@ -9,45 +9,57 @@ use smithay::{
             compositor::FrameFlags,
             exporter::gbm::GbmFramebufferExporter,
             output::{DrmOutput, DrmOutputManager, DrmOutputRenderElements},
-            DrmDevice, DrmDeviceFd, DrmEvent, DrmEventMetadata, DrmNode, NodeType,
+            DrmDevice, DrmDeviceFd, DrmEvent, DrmEventMetadata, DrmNode,
         },
-        egl::{context::ContextPriority, EGLDevice, EGLDisplay},
+        egl::{EGLDevice, EGLDisplay},
         libinput::{LibinputInputBackend, LibinputSessionInterface},
         renderer::{
-            damage::OutputDamageTracker,
-            element::surface::WaylandSurfaceRenderElement,
+            element::{memory::MemoryRenderBuffer, surface::WaylandSurfaceRenderElement, AsRenderElements},
             gles::GlesRenderer,
             multigpu::{gbm::GbmGlesBackend, GpuManager, MultiRenderer},
+            ImportAll, ImportMem,
         },
         session::{libseat::LibSeatSession, Event as SessionEvent, Session},
         udev::{self, UdevBackend, UdevEvent},
     },
-    desktop::{space::Space, utils::OutputPresentationFeedback, Window},
-    output::{Mode as WlMode, Output, PhysicalProperties, Subpixel},
+    desktop::{space::SpaceRenderElements, utils::OutputPresentationFeedback, Window},
+    input::pointer::{CursorImageAttributes, CursorImageStatus},
+    output::{Mode as WlMode, Output, PhysicalProperties},
     reexports::{
-        calloop::{Dispatcher, EventLoop, LoopHandle, RegistrationToken},
-        drm::control::{connector, crtc, Device, ModeTypeFlags},
+        calloop::{EventLoop, RegistrationToken},
+        drm::control::{connector, crtc, ModeTypeFlags},
         gbm::Modifier,
         input::Libinput,
         rustix::fs::OFlags,
-        wayland_server::{backend::GlobalId, DisplayHandle},
+        wayland_server::backend::GlobalId,
     },
-    utils::DeviceFd,
+    render_elements,
+    utils::{DeviceFd, IsAlive, Scale},
+    wayland::compositor,
 };
 
-use std::{collections::HashMap, fmt::Write, mem::transmute, path::Path};
+use std::{collections::HashMap, fmt::Write, path::Path, sync::Mutex};
 
 use smithay_drm_extras::drm_scanner::{DrmScanEvent, DrmScanner};
 
-use tracing::{debug, error, info, warn, warn_span};
+use tracing::{error, info, warn, warn_span};
 
-use crate::state::{enki::Enki, State};
+use crate::{
+    cursor::*,
+    state::{enki::Enki, State},
+};
 
 type UdevRenderer<'a> = MultiRenderer<'a, 'a, GbmGlesBackend<GlesRenderer, DrmDeviceFd>, GbmGlesBackend<GlesRenderer, DrmDeviceFd>>;
 
 type UdevOutputManager = DrmOutputManager<GbmAllocator<DrmDeviceFd>, GbmFramebufferExporter<DrmDeviceFd>, Option<OutputPresentationFeedback>, DrmDeviceFd>;
 
 type UdevDrmOutput = DrmOutput<GbmAllocator<DrmDeviceFd>, GbmFramebufferExporter<DrmDeviceFd>, Option<OutputPresentationFeedback>, DrmDeviceFd>;
+
+render_elements! {
+    OutputRenderElements<R, E> where R: ImportAll + ImportMem;
+    Pointer = PointerRenderElement<R>,
+    Window = SpaceRenderElements<R, E>
+}
 
 const SUPPORTED_FORMATS: &[Fourcc] = &[
     Fourcc::Abgr2101010,
@@ -81,9 +93,15 @@ pub struct UdevData {
     pub(super) session: LibSeatSession,
     input: Libinput,
 
+    // Devices
     gpu_manager: GpuManager<GbmGlesBackend<GlesRenderer, DrmDeviceFd>>,
     primary_gpu: DrmNode,
     devices: HashMap<DrmNode, DeviceData>,
+
+    // Cursor stuff
+    cursor: Cursor,
+    cursor_images: Vec<(xcursor::parser::Image, MemoryRenderBuffer)>,
+    pointer_element: PointerElement,
 }
 
 impl UdevData {
@@ -153,10 +171,15 @@ impl UdevData {
             gpu_manager,
             primary_gpu,
             devices: HashMap::new(),
+            cursor: Cursor::load(),
+            cursor_images: vec![],
+            pointer_element: PointerElement::default(),
         })
     }
 
     pub fn init(&mut self, event_loop: &EventLoop<State>, enki: &mut Enki) -> Result<(), Box<dyn std::error::Error>> {
+        self.pointer_element.set_status(enki.cursor_image_status.clone());
+
         let udev_backend = UdevBackend::new(self.session.seat())?;
 
         for (device_id, path) in udev_backend.device_list() {
@@ -227,7 +250,7 @@ impl UdevData {
         let mut try_initialize_gpu = || -> Result<DrmNode, Box<dyn std::error::Error>> {
             let display = unsafe { EGLDisplay::new(gbm.clone())? };
             let egl_device = EGLDevice::device_for_display(&display)?;
-            
+
             let render_node = egl_device.try_get_render_node().ok().flatten().unwrap_or(node);
             self.gpu_manager.as_mut().add_node(render_node, gbm.clone())?;
             Ok(render_node)
@@ -306,7 +329,7 @@ impl UdevData {
                     crtc: Some(crtc),
                 } => {
                     self.connector_connected(node, connector, crtc, enki);
-                    self.render_surface(node, crtc, &enki.space);
+                    self.render_surface(node, crtc, &enki);
                 }
                 DrmScanEvent::Disconnected {
                     connector,
@@ -414,7 +437,7 @@ impl UdevData {
 }
 
 impl UdevData {
-    pub fn render_all(&mut self, space: &Space<Window>) {
+    pub fn render_all(&mut self, enki: &Enki) {
         let nodes: Vec<_> = self.devices.keys().copied().collect();
         for node in nodes {
             if let Some(device) = self.devices.get(&node) {
@@ -426,14 +449,14 @@ impl UdevData {
                         surface.is_pending
                     };
                     if !is_pending {
-                        self.render_surface(node, crtc, space);
+                        self.render_surface(node, crtc, enki);
                     }
                 }
             }
         }
     }
 
-    fn render_surface(&mut self, node: DrmNode, crtc: crtc::Handle, space: &Space<Window>) {
+    fn render_surface(&mut self, node: DrmNode, crtc: crtc::Handle, enki: &Enki) {
         let Some(device) = self.devices.get_mut(&node) else {
             return;
         };
@@ -450,13 +473,63 @@ impl UdevData {
             }
         };
 
-        let elements = match smithay::desktop::space::space_render_elements::<_, Window, _>(&mut renderer, [space], &surface.output, 1.0) {
+        let Some(output_geometry) = enki.space.output_geometry(&surface.output) else {
+            return;
+        };
+
+        let scale = Scale::from(surface.output.current_scale().fractional_scale());
+
+        // Cursor rendering
+
+        let mut pointer_elements = vec![];
+
+        let pointer_location = enki.seat.get_pointer().unwrap().current_location();
+        if output_geometry.to_f64().contains(pointer_location) {
+            let mut cursor_status = enki.cursor_image_status.clone();
+
+            let hotspot = if let CursorImageStatus::Surface(ref surf) = cursor_status {
+                if surf.alive() {
+                    compositor::with_states(surf, |states| states.data_map.get::<Mutex<CursorImageAttributes>>().unwrap().lock().unwrap().hotspot)
+                } else {
+                    cursor_status = CursorImageStatus::default_named();
+                    (0, 0).into()
+                }
+            } else {
+                (0, 0).into()
+            };
+
+            let cursor_pos = pointer_location - output_geometry.loc.to_f64();
+
+            if let CursorImageStatus::Named(_) = &cursor_status {
+                let frame = self.cursor.get_image(1, enki.start_time.elapsed());
+                let buffer = self.cursor_images.iter().find_map(|(img, buf)| (img == &frame).then(|| buf.clone())).unwrap_or_else(|| {
+                    let buf = MemoryRenderBuffer::from_slice(&frame.pixels_rgba, Fourcc::Argb8888, (frame.width as i32, frame.height as i32), 1, smithay::utils::Transform::Normal, None);
+                    self.cursor_images.push((frame, buf.clone()));
+                    buf
+                });
+                self.pointer_element.set_buffer(buffer);
+            }
+            self.pointer_element.set_status(cursor_status);
+
+            pointer_elements.extend(
+                self.pointer_element
+                    .render_elements::<PointerRenderElement<_>>(&mut renderer, (cursor_pos - hotspot.to_f64()).to_physical(scale).to_i32_round(), scale, 1.0),
+            );
+        }
+
+        let space_elements = match smithay::desktop::space::space_render_elements::<_, Window, _>(&mut renderer, [&enki.space], &surface.output, 1.0) {
             Ok(elements) => elements,
             Err(err) => {
                 warn!("Failed to collect render elements: {err:?}");
                 return;
             }
         };
+
+        let elements: Vec<_> = space_elements
+            .into_iter()
+            .map(|s| OutputRenderElements::Window(s))
+            .chain(pointer_elements.into_iter().map(|p| OutputRenderElements::Pointer(p)))
+            .collect();
 
         match surface.drm_output.render_frame(&mut renderer, &elements, [0.1, 0.1, 0.1, 1.0], FrameFlags::DEFAULT) {
             Ok(result) => {
@@ -479,7 +552,7 @@ impl UdevData {
                 if let Err(err) = surface.drm_output.frame_submitted() {
                     warn!("Frame_submitted error: {err:?}");
                 }
-                
+
                 let output = surface.output.clone();
                 let time = enki.start_time.elapsed();
                 enki.space.elements().for_each(|window| {
@@ -492,6 +565,6 @@ impl UdevData {
             }
         }
 
-        self.render_surface(node, crtc, &enki.space);
+        self.render_surface(node, crtc, &enki);
     }
 }
