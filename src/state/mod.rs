@@ -14,15 +14,16 @@ use smithay::{
     utils::{Logical, Point, SERIAL_COUNTER},
 };
 
-use crate::math::IVec2;
+use crate::{config::Config, math::IVec2};
 
 pub struct State {
     pub enki: enki::Enki,
     pub backend: backend::Backend,
+    pub config: Config,
 }
 
 impl State {
-    pub fn new(event_loop: &mut smithay::reexports::calloop::EventLoop<'static, Self>, display: smithay::reexports::wayland_server::Display<Self>) -> Self {
+    pub fn new(event_loop: &mut smithay::reexports::calloop::EventLoop<'static, Self>, display: smithay::reexports::wayland_server::Display<Self>, config: Config) -> Self {
         let mut backend = if std::env::var_os("WAYLAND_DISPLAY").is_some() || std::env::var_os("DISPLAY").is_some() {
             backend::Backend::Winit(backend::winit::WinitData::new(event_loop).unwrap())
         } else {
@@ -35,6 +36,7 @@ impl State {
         Self {
             enki,
             backend,
+            config,
         }
     }
 

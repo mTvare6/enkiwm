@@ -3,6 +3,7 @@
 #![allow(irrefutable_let_patterns)]
 
 mod command;
+mod config;
 mod cursor;
 mod grabs;
 mod handlers;
@@ -10,10 +11,13 @@ mod layout;
 mod math;
 mod state;
 
+use std::io;
 use std::io::IsTerminal;
 
 use smithay::reexports::{calloop::EventLoop, wayland_server::Display};
 use state::State;
+
+use crate::config::Config;
 
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     init_logging();
@@ -22,14 +26,21 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let display: Display<State> = Display::new()?;
 
-    let mut state = State::new(&mut event_loop, display);
+    let config = Config::reload();
+    let terminal = config.terminal();
+
+    let mut state = State::new(&mut event_loop, display, config);
+    let _ = config::watch(event_loop.handle(), |state: &mut State| {
+        state.config = Config::reload();
+    })
+    .ok_or(io::Error::other("notify-rs failed"));
 
     std::env::remove_var("DISPLAY");
     std::env::set_var("WAYLAND_DISPLAY", &state.enki.socket_name);
     std::env::set_var("OZONE_PLATFORM", "wayland");
     std::env::set_var("QT_QPA_PLATFORM", "wayland");
 
-    spawn_client();
+    spawn_client(terminal);
 
     event_loop.run(None, &mut state, move |state| {
         let _ = state.enki.display_handle.flush_clients();
@@ -51,7 +62,7 @@ fn init_logging() {
     }
 }
 
-fn spawn_client() {
+fn spawn_client(terminal: String) {
     let mut args = std::env::args().skip(1);
     let flag = args.next();
     let arg = args.next();
@@ -61,7 +72,7 @@ fn spawn_client() {
             std::process::Command::new(command).spawn().ok();
         }
         _ => {
-            std::process::Command::new("kitty").spawn().ok();
+            std::process::Command::new(terminal).spawn().ok();
         }
     }
 }
