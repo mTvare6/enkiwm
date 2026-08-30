@@ -252,21 +252,21 @@ impl State {
                 let serial = SERIAL_COUNTER.next_serial();
                 let pointer = self.enki.seat.get_pointer().unwrap();
 
-                let new_location = {
-                    let pos = pointer.current_location() + event.delta();
+                let pos = pointer.current_location() + event.delta();
+                let new_location = self
+                    .enki
+                    .space
+                    .outputs()
+                    .next()
+                    .map(|output| {
+                        self.enki.space.output_geometry(output).map(|geo| {
+                            let geo = geo.to_f64();
 
-                    match self.enki.space.outputs().next() {
-                        Some(output) => match self.enki.space.output_geometry(output) {
-                            Some(geo) => {
-                                let geo = geo.to_f64();
-
-                                Point::from((pos.x.clamp(geo.loc.x, geo.loc.x + geo.size.w - 1.0), pos.y.clamp(geo.loc.y, geo.loc.y + geo.size.h - 1.0)))
-                            }
-                            None => pos,
-                        },
-                        None => pos,
-                    }
-                };
+                            Point::from((pos.x.clamp(geo.loc.x, geo.loc.x + geo.size.w - 1.0), pos.y.clamp(geo.loc.y, geo.loc.y + geo.size.h - 1.0)))
+                        })
+                    })
+                    .flatten()
+                    .unwrap_or(pos);
 
                 let under = self.surface_under(new_location);
 
