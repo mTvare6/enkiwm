@@ -18,9 +18,13 @@ pub struct Config {
 }
 
 impl Config {
-    pub fn reload() -> Self { get_config_text().and_then(|buf| toml::from_str(&buf).ok()).unwrap_or_default() }
+    pub fn reload() -> Self {
+        get_config_text().and_then(|buf| toml::from_str(&buf).ok()).unwrap_or_default()
+    }
 
-    pub fn terminal(&self) -> String { self.terminal.clone().unwrap_or_else(|| String::from("kitty")) }
+    pub fn terminal(&self) -> String {
+        self.terminal.clone().unwrap_or_else(|| String::from("kitty"))
+    }
 }
 
 pub fn watch<D, F: FnMut(&mut D) + 'static>(loop_handle: LoopHandle<D>, mut on_change: F) -> Option<Debouncer<RecommendedWatcher>> {

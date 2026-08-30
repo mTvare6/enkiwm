@@ -2,7 +2,6 @@ max_width = 350
 
 # keep functions straight
 fn_call_width = 300
-fn_single_line = true
 
 # force structs to wrap earlier
 struct_lit_width = 10

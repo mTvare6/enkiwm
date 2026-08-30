@@ -39,11 +39,17 @@ impl Grid {
         unreachable!();
     }
 
-    pub fn insert(&mut self, pos: IVec2, window: Window) { self.cells.insert(pos, window); }
+    pub fn insert(&mut self, pos: IVec2, window: Window) {
+        self.cells.insert(pos, window);
+    }
 
-    pub fn get(&mut self, pos: &IVec2) -> Option<Window> { self.cells.get(pos).cloned() }
+    pub fn get(&mut self, pos: &IVec2) -> Option<Window> {
+        self.cells.get(pos).cloned()
+    }
 
-    pub fn cleanup(&mut self) { self.cells.retain(|_, window| window.alive()); }
+    pub fn cleanup(&mut self) {
+        self.cells.retain(|_, window| window.alive());
+    }
 
     pub fn swap(&mut self, src: IVec2, dst: IVec2) {
         // if src != dst {

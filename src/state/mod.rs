@@ -63,11 +63,17 @@ impl State {
         }
     }
 
-    pub fn surface_under(&self, pos: Point<f64, Logical>) -> Option<(WlSurface, Point<f64, Logical>)> { self.enki.surface_under(pos) }
+    pub fn surface_under(&self, pos: Point<f64, Logical>) -> Option<(WlSurface, Point<f64, Logical>)> {
+        self.enki.surface_under(pos)
+    }
 
-    pub fn base_monitor_size(&self) -> IVec2 { self.enki.base_monitor_size() }
+    pub fn base_monitor_size(&self) -> IVec2 {
+        self.enki.base_monitor_size()
+    }
 
-    pub fn update_viewport(&mut self, modal_change: bool) { self.enki.update_viewport(modal_change); }
+    pub fn update_viewport(&mut self, modal_change: bool) {
+        self.enki.update_viewport(modal_change);
+    }
 
     pub fn process_input_event<I: InputBackend>(&mut self, event: InputEvent<I>) {
         match event {

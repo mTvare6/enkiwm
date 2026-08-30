@@ -31,7 +31,9 @@ bitflags::bitflags! {
 
 impl From<xdg_toplevel::ResizeEdge> for ResizeEdge {
     #[inline]
-    fn from(x: xdg_toplevel::ResizeEdge) -> Self { Self::from_bits(x as u32).unwrap() }
+    fn from(x: xdg_toplevel::ResizeEdge) -> Self {
+        Self::from_bits(x as u32).unwrap()
+    }
 }
 
 pub struct ResizeSurfaceGrab {
@@ -114,7 +116,9 @@ impl PointerGrab<State> for ResizeSurfaceGrab {
         xdg.send_pending_configure();
     }
 
-    fn relative_motion(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, focus: Option<(WlSurface, Point<f64, Logical>)>, event: &RelativeMotionEvent) { handle.relative_motion(data, focus, event); }
+    fn relative_motion(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, focus: Option<(WlSurface, Point<f64, Logical>)>, event: &RelativeMotionEvent) {
+        handle.relative_motion(data, focus, event);
+    }
 
     fn button(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, event: &ButtonEvent) {
         handle.button(data, event);
@@ -144,27 +148,49 @@ impl PointerGrab<State> for ResizeSurfaceGrab {
         }
     }
 
-    fn axis(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, details: AxisFrame) { handle.axis(data, details) }
+    fn axis(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, details: AxisFrame) {
+        handle.axis(data, details)
+    }
 
-    fn frame(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>) { handle.frame(data); }
+    fn frame(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>) {
+        handle.frame(data);
+    }
 
-    fn gesture_swipe_begin(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, event: &GestureSwipeBeginEvent) { handle.gesture_swipe_begin(data, event) }
+    fn gesture_swipe_begin(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, event: &GestureSwipeBeginEvent) {
+        handle.gesture_swipe_begin(data, event)
+    }
 
-    fn gesture_swipe_update(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, event: &GestureSwipeUpdateEvent) { handle.gesture_swipe_update(data, event) }
+    fn gesture_swipe_update(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, event: &GestureSwipeUpdateEvent) {
+        handle.gesture_swipe_update(data, event)
+    }
 
-    fn gesture_swipe_end(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, event: &GestureSwipeEndEvent) { handle.gesture_swipe_end(data, event) }
+    fn gesture_swipe_end(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, event: &GestureSwipeEndEvent) {
+        handle.gesture_swipe_end(data, event)
+    }
 
-    fn gesture_pinch_begin(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, event: &GesturePinchBeginEvent) { handle.gesture_pinch_begin(data, event) }
+    fn gesture_pinch_begin(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, event: &GesturePinchBeginEvent) {
+        handle.gesture_pinch_begin(data, event)
+    }
 
-    fn gesture_pinch_update(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, event: &GesturePinchUpdateEvent) { handle.gesture_pinch_update(data, event) }
+    fn gesture_pinch_update(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, event: &GesturePinchUpdateEvent) {
+        handle.gesture_pinch_update(data, event)
+    }
 
-    fn gesture_pinch_end(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, event: &GesturePinchEndEvent) { handle.gesture_pinch_end(data, event) }
+    fn gesture_pinch_end(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, event: &GesturePinchEndEvent) {
+        handle.gesture_pinch_end(data, event)
+    }
 
-    fn gesture_hold_begin(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, event: &GestureHoldBeginEvent) { handle.gesture_hold_begin(data, event) }
+    fn gesture_hold_begin(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, event: &GestureHoldBeginEvent) {
+        handle.gesture_hold_begin(data, event)
+    }
 
-    fn gesture_hold_end(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, event: &GestureHoldEndEvent) { handle.gesture_hold_end(data, event) }
+    fn gesture_hold_end(&mut self, data: &mut State, handle: &mut PointerInnerHandle<'_, State>, event: &GestureHoldEndEvent) {
+        handle.gesture_hold_end(data, event)
+    }
 
-    fn start_data(&self) -> &PointerGrabStartData<State> { &self.start_data }
+    fn start_data(&self) -> &PointerGrabStartData<State> {
+        &self.start_data
+    }
 
     fn unset(&mut self, _data: &mut State) {}
 }

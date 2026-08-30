@@ -23,9 +23,13 @@ impl SeatHandler for State {
     type PointerFocus = WlSurface;
     type TouchFocus = WlSurface;
 
-    fn seat_state(&mut self) -> &mut SeatState<State> { &mut self.enki.seat_state }
+    fn seat_state(&mut self) -> &mut SeatState<State> {
+        &mut self.enki.seat_state
+    }
 
-    fn cursor_image(&mut self, _seat: &Seat<Self>, image: smithay::input::pointer::CursorImageStatus) { self.enki.cursor_image_status = image; }
+    fn cursor_image(&mut self, _seat: &Seat<Self>, image: smithay::input::pointer::CursorImageStatus) {
+        self.enki.cursor_image_status = image;
+    }
 
     fn focus_changed(&mut self, seat: &Seat<Self>, focused: Option<&WlSurface>) {
         let dh = &self.enki.display_handle;
@@ -45,7 +49,9 @@ impl SelectionHandler for State {
 }
 
 impl DataDeviceHandler for State {
-    fn data_device_state(&mut self) -> &mut DataDeviceState { &mut self.enki.data_device_state }
+    fn data_device_state(&mut self) -> &mut DataDeviceState {
+        &mut self.enki.data_device_state
+    }
 }
 
 impl DndGrabHandler for State {}
