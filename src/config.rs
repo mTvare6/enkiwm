@@ -13,11 +13,25 @@ use notify_debouncer_mini::{
     DebounceEventResult, Debouncer,
 };
 
-#[derive(Deserialize, Default)]
+#[derive(Deserialize)]
 pub struct Config {
-    pub terminal: Option<String>,
+    #[serde(default = "default_terminal")]
+    pub terminal: String,
     #[serde(default, deserialize_with = "deserialize_programs")]
     pub programs: HashMap<Keystroke, String>,
+}
+
+fn default_terminal() -> String {
+    String::from("kitty")
+}
+
+impl Default for Config {
+    fn default() -> Self {
+        Self {
+            terminal: default_terminal(),
+            programs: HashMap::new(),
+        }
+    }
 }
 
 #[derive(Clone, Copy, Debug, Default, Hash, PartialEq, Eq)]
@@ -112,10 +126,6 @@ impl Keystroke {
 impl Config {
     pub fn reload() -> Self {
         get_config_text().and_then(|buf| toml::from_str(&buf).ok()).unwrap_or_default()
-    }
-
-    pub fn terminal(&self) -> String {
-        self.terminal.clone().unwrap_or_else(|| String::from("kitty"))
     }
 
     pub fn program_for_keystroke(&self, modifiers: &ModifiersState, keysym: Keysym) -> Option<&str> {

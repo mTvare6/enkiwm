@@ -27,20 +27,19 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let display: Display<State> = Display::new()?;
 
     let config = Config::reload();
-    let terminal = config.terminal();
 
     let mut state = State::new(&mut event_loop, display, config);
     let _ = config::watch(event_loop.handle(), |state: &mut State| {
         state.config = Config::reload();
     })
-    .ok_or(io::Error::other("notify-rs failed"));
+    .ok_or(io::Error::other("notify-rs failed"))?;
 
     std::env::remove_var("DISPLAY");
     std::env::set_var("WAYLAND_DISPLAY", &state.enki.socket_name);
     std::env::set_var("OZONE_PLATFORM", "wayland");
     std::env::set_var("QT_QPA_PLATFORM", "wayland");
 
-    spawn_client(terminal);
+    spawn_client(&state.config.terminal);
 
     event_loop.run(None, &mut state, move |state| {
         let _ = state.enki.display_handle.flush_clients();
@@ -62,7 +61,7 @@ fn init_logging() {
     }
 }
 
-fn spawn_client(terminal: String) {
+fn spawn_client(terminal: &str) {
     let mut args = std::env::args().skip(1);
     let flag = args.next();
     let arg = args.next();
