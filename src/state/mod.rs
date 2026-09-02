@@ -90,6 +90,14 @@ impl State {
                             data.enki.loop_signal.stop();
                         }
 
+                        // TODO: Decide if program over-rides base
+                        if let Some(keysym) = handle.raw_latin_sym_or_raw_current_sym() {
+                            if let Some(program) = data.config.program_for_keystroke(modifiers, keysym) {
+                                std::process::Command::new(program).spawn().ok();
+                                return FilterResult::Intercept(());
+                            }
+                        }
+
                         if sym == Keysym::Alt_R {
                             data.enki.modal_mode = !data.enki.modal_mode;
                             data.enki.update_viewport(true);
@@ -148,15 +156,6 @@ impl State {
                                 }
                                 data.set_cursor_focus();
                                 return FilterResult::Intercept(());
-                            }
-                            let program = match sym {
-                                Keysym::Return if modifiers.shift => Some("weston-terminal"),
-                                Keysym::Return => Some("kitty"),
-                                Keysym::w => Some("firefox"),
-                                _ => None,
-                            };
-                            if let Some(program) = program {
-                                std::process::Command::new(program).spawn().ok();
                             }
                             return FilterResult::Intercept(());
                         }

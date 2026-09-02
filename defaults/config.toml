@@ -1,0 +1,6 @@
+terminal = "alacritty"
+
+[programs]
+kitty = "super+return"
+"weston-terminal" = "super+shift+Return"
+firefox = "super+w"
