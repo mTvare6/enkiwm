@@ -175,3 +175,65 @@ fn get_config_text() -> Option<String> {
     file.read_to_string(&mut buf).ok()?;
     Some(buf)
 }
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn defaults_terminal_when_omitted() {
+        let config: Config = toml::from_str("").unwrap();
+
+        assert_eq!(config.terminal, "kitty");
+    }
+
+    #[test]
+    fn deserializes_configured_terminal() {
+        let config: Config = toml::from_str(r#"terminal = "foot""#).unwrap();
+
+        assert_eq!(config.terminal, "foot");
+    }
+
+    #[test]
+    fn parses_program_keystrokes() {
+        let config: Config = toml::from_str(
+            r#"
+            [programs]
+            firefox = "ctrl+shift+w"
+            "weston-terminal" = "super+Return"
+            "#,
+        )
+        .unwrap();
+
+        let firefox: Keystroke = "ctrl+shift+w".parse().unwrap();
+        assert_eq!(firefox.keysym, Keysym::w);
+        assert!(firefox.modifiers.ctrl);
+        assert!(firefox.modifiers.shift);
+        assert_eq!(config.programs[&firefox], "firefox");
+
+        let terminal: Keystroke = "super+Return".parse().unwrap();
+        assert_eq!(terminal.keysym, Keysym::Return);
+        assert!(terminal.modifiers.logo);
+        assert_eq!(config.programs[&terminal], "weston-terminal");
+    }
+
+    #[test]
+    fn rejects_unknown_modifiers_and_keys() {
+        assert!("hyper+w".parse::<Keystroke>().is_err());
+        assert!("ctrl+definitely-not-a-key".parse::<Keystroke>().is_err());
+    }
+
+    #[test]
+    fn rejects_duplicate_keystrokes() {
+        let result = toml::from_str::<Config>(
+            r#"
+            [programs]
+            firefox = "ctrl+w"
+            chromium = "ctrl+w"
+            "#,
+        );
+
+        assert!(result.is_err());
+    }
+}
